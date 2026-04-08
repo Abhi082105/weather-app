@@ -1,10 +1,13 @@
 import os
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import requests
 
 app = Flask(__name__)
 
 API_KEY = os.environ.get("API_KEY")
+
+# 🔍 City suggestions (simple static list)
+CITIES = ["London", "New York", "Delhi", "Tokyo", "Paris", "Mumbai", "Sydney"]
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -18,34 +21,34 @@ def index():
         city = request.form.get("city")
 
         if not API_KEY:
-            error = "API key not set!"
-            return render_template("index.html", weather=None, forecast=[], labels=[], temps=[], error=error)
+            error = "API key missing"
+            return render_template("index.html", error=error)
 
-        # Current weather
-        weather_url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
-        weather_res = requests.get(weather_url).json()
+        # 🌤 Current weather
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
+        res = requests.get(url).json()
 
-        if weather_res.get("cod") != 200:
-            error = weather_res.get("message", "Error fetching weather")
-            return render_template("index.html", weather=None, forecast=[], labels=[], temps=[], error=error)
+        if res.get("cod") != 200:
+            error = res.get("message")
+            return render_template("index.html", error=error)
 
         weather = {
-            "city": weather_res["name"],
-            "temp": weather_res["main"]["temp"],
-            "humidity": weather_res["main"]["humidity"],
-            "desc": weather_res["weather"][0]["description"]
+            "city": res["name"],
+            "temp": res["main"]["temp"],
+            "humidity": res["main"]["humidity"],
+            "desc": res["weather"][0]["description"]
         }
 
-        # Forecast
-        forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={API_KEY}&units=metric"
-        forecast_res = requests.get(forecast_url).json()
+        # 📊 Forecast
+        f_url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={API_KEY}&units=metric"
+        f_res = requests.get(f_url).json()
 
-        if forecast_res.get("cod") == "200":
-            for item in forecast_res["list"][:8]:
-                time = item["dt_txt"]
+        if f_res.get("cod") == "200":
+            for item in f_res["list"][:8]:
+                time = item["dt_txt"].split()[1][:5]
                 temp = item["main"]["temp"]
 
-                labels.append(time.split()[1][:5])
+                labels.append(time)
                 temps.append(temp)
 
                 forecast.append({
@@ -53,14 +56,24 @@ def index():
                     "temp": temp
                 })
 
-    return render_template(
-        "index.html",
-        weather=weather,
-        forecast=forecast,
-        labels=labels,
-        temps=temps,
-        error=error
-    )
+    return render_template("index.html",
+                           weather=weather,
+                           forecast=forecast,
+                           labels=labels,
+                           temps=temps,
+                           error=error,
+                           cities=CITIES)
+
+# 📍 Auto location API
+@app.route("/weather_by_coords")
+def weather_by_coords():
+    lat = request.args.get("lat")
+    lon = request.args.get("lon")
+
+    url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
+    res = requests.get(url).json()
+
+    return jsonify(res)
 
 if __name__ == "__main__":
     app.run(debug=True)
