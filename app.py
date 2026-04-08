@@ -3,7 +3,8 @@ import requests
 
 app = Flask(__name__)
 
-API_KEY = "b6e6b8452d8045cc4386ee0d2c914b9e"
+import os
+API_KEY = os.environ.get("API_KEY")
 
 @app.route("/", methods=["GET", "POST"])
 def index():
