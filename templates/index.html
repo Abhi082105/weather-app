@@ -81,7 +81,7 @@
     </style>
 </head>
 
-<body id="body>
+<body id="body">
 
 <div class="box">
     <span class="toggle" onclick="toggleDark()">🌙</span>
@@ -130,8 +130,14 @@
         </script>
     {% endif %}
 </div>
+
+<!-- 🔥 Dynamic Background Script -->
 <script>
-    const temp = {{ weather.temp if weather else 'null' }};
+    {% if weather %}
+        const temp = {{ weather.temp }};
+    {% else %}
+        const temp = null;
+    {% endif %}
 
     if (temp !== null) {
         const body = document.getElementById("body");
@@ -148,11 +154,15 @@
     }
 </script>
 
+<!-- 🌙 Dark Mode -->
 <script>
 function toggleDark() {
     document.body.classList.toggle("dark");
 }
+</script>
 
+<!-- 🔎 Suggestions -->
+<script>
 function suggest() {
     let input = document.getElementById("cityInput").value.toLowerCase();
     let suggestions = document.getElementById("suggestions");
@@ -172,7 +182,10 @@ function suggest() {
         }
     });
 }
+</script>
 
+<!-- 📍 Location -->
+<script>
 function getLocation() {
     navigator.geolocation.getCurrentPosition(pos => {
         fetch(`/weather_by_coords?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
