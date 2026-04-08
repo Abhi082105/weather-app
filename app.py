@@ -1,9 +1,10 @@
+import os
 from flask import Flask, render_template, request
 import requests
 
 app = Flask(__name__)
 
-import os
+
 API_KEY = os.environ.get("API_KEY")
 
 @app.route("/", methods=["GET", "POST"])
