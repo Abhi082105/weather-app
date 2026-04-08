@@ -3,154 +3,153 @@
 <head>
     <title>Weather App</title>
 
-    <!-- Chart.js -->
+    <!-- MOBILE SUPPORT -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Chart -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
             font-family: Arial;
             text-align: center;
-            padding: 40px;
-            color: white;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(to right, #74ebd5, #ACB6E5);
         }
-
-        .sunny { background: linear-gradient(to right, #fceabb, #f8b500); }
-        .cloudy { background: linear-gradient(to right, #bdc3c7, #2c3e50); }
-        .rainy { background: linear-gradient(to right, #4b79a1, #283e51); }
-        .default { background: linear-gradient(to right, #74ebd5, #ACB6E5); }
 
         .box {
-            background: rgba(255,255,255,0.15);
+            width: 90%;
+            max-width: 420px;
+            margin: auto;
+            background: rgba(255,255,255,0.2);
             padding: 20px;
             border-radius: 15px;
-            display: inline-block;
         }
 
-        input, button {
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input {
             padding: 10px;
-            margin: 10px;
-            border-radius: 5px;
+            width: 90%;
+            margin: 5px;
+            border-radius: 8px;
             border: none;
         }
 
         button {
+            padding: 12px;
+            margin: 5px;
+            width: 90%;
+            border: none;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 16px;
         }
 
         .forecast {
             display: flex;
-            justify-content: center;
             flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 15px;
         }
 
         .card {
-            background: rgba(255,255,255,0.2);
-            margin: 10px;
+            background: white;
             padding: 10px;
+            margin: 5px;
             border-radius: 10px;
-        }
-
-        img {
-            width: 60px;
+            width: 80px;
         }
 
         canvas {
             margin-top: 20px;
         }
+
+        .error {
+            color: red;
+        }
+
+        /* MOBILE OPTIMIZATION */
+        @media (max-width: 600px) {
+
+            h2 {
+                font-size: 20px;
+            }
+
+            input, button {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .forecast {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .card {
+                width: 80%;
+            }
+
+            canvas {
+                width: 100% !important;
+                height: auto !important;
+            }
+        }
     </style>
 </head>
 
-<body class="{{ bg }}">
+<body>
 
-    <div class="box">
-        <h2>🌦️ Weather App</h2>
+<div class="box">
+    <h2>🌦 Weather App</h2>
 
-        <form method="POST">
-            <input type="text" name="city" placeholder="Enter city">
+    <form method="POST">
+        <input type="text" name="city" placeholder="Enter city" required>
+        <button type="submit">Search</button>
+    </form>
 
-            <button type="submit">Search</button>
-            <button type="button" onclick="getLocation()">📍 My Location</button>
-        </form>
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
 
-        {% if weather %}
-            {% if weather.error %}
-                <p style="color:red;">{{ weather.error }}</p>
-            {% else %}
-                <h3>{{ weather.city }}</h3>
+    {% if weather %}
+        <h3>{{ weather.city }}</h3>
+        <p>🌡 Temp: {{ weather.temp }} °C</p>
+        <p>💧 Humidity: {{ weather.humidity }}%</p>
+        <p>☁ {{ weather.desc }}</p>
 
-                <img src="http://openweathermap.org/img/wn/{{ weather.icon }}@2x.png">
+        <h4>Forecast</h4>
 
-                <p>🌡️ {{ weather.temp }} °C</p>
-                <p>🔥 Feels like: {{ weather.feels_like }} °C</p>
-                <p>💧 {{ weather.humidity }}%</p>
-                <p>{{ weather.description }}</p>
-
-                <!-- 📅 Forecast -->
-                <div class="forecast">
-                    {% for day in forecast %}
-                        <div class="card">
-                            <p>{{ day.date }}</p>
-                            <img src="http://openweathermap.org/img/wn/{{ day.icon }}.png">
-                            <p>{{ day.temp }}°C</p>
-                        </div>
-                    {% endfor %}
+        <div class="forecast">
+            {% for item in forecast %}
+                <div class="card">
+                    <p>{{ item.time.split()[1] }}</p>
+                    <p>{{ item.temp }}°C</p>
                 </div>
+            {% endfor %}
+        </div>
 
-                <!-- 📊 Chart -->
-                <canvas id="tempChart"></canvas>
+        <canvas id="chart"></canvas>
 
-            {% endif %}
-        {% endif %}
-    </div>
-
-    <!-- 📍 Location Script -->
-    <script>
-    function getLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(sendPosition);
-        } else {
-            alert("Geolocation not supported");
-        }
-    }
-
-    function sendPosition(position) {
-        let form = document.createElement("form");
-        form.method = "POST";
-
-        let lat = document.createElement("input");
-        lat.name = "lat";
-        lat.value = position.coords.latitude;
-
-        let lon = document.createElement("input");
-        lon.name = "lon";
-        lon.value = position.coords.longitude;
-
-        form.appendChild(lat);
-        form.appendChild(lon);
-        document.body.appendChild(form);
-        form.submit();
-    }
-    </script>
-
-    <!-- 📊 Chart Script -->
-    <script>
-    const dates = {{ dates | tojson }};
-    const temps = {{ temps | tojson }};
-
-    if (dates.length > 0) {
-        new Chart(document.getElementById("tempChart"), {
-            type: "line",
-            data: {
-                labels: dates,
-                datasets: [{
-                    label: "Temperature (°C)",
-                    data: temps,
-                    borderWidth: 2
-                }]
-            }
-        });
-    }
-    </script>
+        <script>
+            new Chart(document.getElementById("chart"), {
+                type: "line",
+                data: {
+                    labels: {{ labels | safe }},
+                    datasets: [{
+                        label: "Temp °C",
+                        data: {{ temps | safe }}
+                    }]
+                }
+            });
+        </script>
+    {% endif %}
+</div>
 
 </body>
 </html>
