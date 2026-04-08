@@ -81,7 +81,7 @@
     </style>
 </head>
 
-<body>
+<body id="body>
 
 <div class="box">
     <span class="toggle" onclick="toggleDark()">🌙</span>
@@ -130,6 +130,23 @@
         </script>
     {% endif %}
 </div>
+<script>
+    const temp = {{ weather.temp if weather else 'null' }};
+
+    if (temp !== null) {
+        const body = document.getElementById("body");
+
+        if (temp < 15) {
+            body.style.background = "linear-gradient(to right, #4facfe, #00f2fe)";
+        } 
+        else if (temp < 30) {
+            body.style.background = "linear-gradient(to right, #43e97b, #38f9d7)";
+        } 
+        else {
+            body.style.background = "linear-gradient(to right, #ff512f, #dd2476)";
+        }
+    }
+</script>
 
 <script>
 function toggleDark() {
