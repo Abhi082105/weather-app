@@ -4,82 +4,63 @@ import requests
 
 app = Flask(__name__)
 
-
 API_KEY = os.environ.get("API_KEY")
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    weather_data = None
-    forecast_data = []
-    dates = []
+    weather = None
+    forecast = []
+    labels = []
     temps = []
-    bg = "default"
+    error = None
 
     if request.method == "POST":
         city = request.form.get("city")
-        lat = request.form.get("lat")
-        lon = request.form.get("lon")
 
-        # 📍 Choose API based on input
-        if lat and lon:
-            weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
-            forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
-        else:
-            weather_url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
-            forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={API_KEY}&units=metric"
+        if not API_KEY:
+            error = "API key not set!"
+            return render_template("index.html", weather=None, forecast=[], labels=[], temps=[], error=error)
 
-        weather_json = requests.get(weather_url).json()
-        forecast_json = requests.get(forecast_url).json()
+        # Current weather
+        weather_url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
+        weather_res = requests.get(weather_url).json()
 
-        if weather_json.get("cod") == 200:
+        if weather_res.get("cod") != 200:
+            error = weather_res.get("message", "Error fetching weather")
+            return render_template("index.html", weather=None, forecast=[], labels=[], temps=[], error=error)
 
-            description = weather_json["weather"][0]["description"]
+        weather = {
+            "city": weather_res["name"],
+            "temp": weather_res["main"]["temp"],
+            "humidity": weather_res["main"]["humidity"],
+            "desc": weather_res["weather"][0]["description"]
+        }
 
-            # 🌈 Background logic
-            if "clear" in description:
-                bg = "sunny"
-            elif "cloud" in description:
-                bg = "cloudy"
-            elif "rain" in description:
-                bg = "rainy"
+        # Forecast
+        forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={API_KEY}&units=metric"
+        forecast_res = requests.get(forecast_url).json()
 
-            weather_data = {
-                "city": weather_json["name"],
-                "temp": weather_json["main"]["temp"],
-                "feels_like": weather_json["main"]["feels_like"],
-                "humidity": weather_json["main"]["humidity"],
-                "description": description,
-                "icon": weather_json["weather"][0]["icon"]
-            }
-
-            # 📅 Forecast + chart data
-            for i in range(0, len(forecast_json["list"]), 8):
-                item = forecast_json["list"][i]
-
-                date = item["dt_txt"].split(" ")[0]
+        if forecast_res.get("cod") == "200":
+            for item in forecast_res["list"][:8]:
+                time = item["dt_txt"]
                 temp = item["main"]["temp"]
 
-                dates.append(date)
+                labels.append(time.split()[1][:5])
                 temps.append(temp)
 
-                forecast_data.append({
-                    "date": date,
-                    "temp": temp,
-                    "icon": item["weather"][0]["icon"]
+                forecast.append({
+                    "time": time,
+                    "temp": temp
                 })
-
-        else:
-            weather_data = {"error": weather_json.get("message")}
 
     return render_template(
         "index.html",
-        weather=weather_data,
-        forecast=forecast_data,
-        bg=bg,
-        dates=dates,
-        temps=temps
+        weather=weather,
+        forecast=forecast,
+        labels=labels,
+        temps=temps,
+        error=error
     )
-
 
 if __name__ == "__main__":
     app.run(debug=True)
